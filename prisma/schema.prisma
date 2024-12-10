@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?   @db.Text
+  email         String?   @unique @db.Text
+  emailVerified DateTime?
+  image         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  points        Int       @default(0)
+  
+  // Relations
+  feeds         Feed[]
+  articles      Article[]
+  preferences   Preferences?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Feed {
+  id          String    @id @default(uuid()) @db.Uuid
+  url         String    @db.Text
+  category    String    @db.Text
+  lastFetched DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @db.Uuid
+  articles    Article[]
+}
+
+model Article {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String    @db.Text
+  content     String    @db.Text
+  url         String    @db.Text
+  publishedAt DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  feed        Feed      @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  feedId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @db.Uuid
+}
+
+model Preferences {
+  id           String   @id @default(uuid()) @db.Uuid
+  categories   String[] @db.Text
+  readingLevel String   @default("beginner") @db.Text
+  theme        String   @default("system") @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String   @unique @db.Uuid
+}
+
+// NextAuth Models
+model Account {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  type              String   @db.Text
+  provider          String   @db.Text
+  providerAccountId String   @db.Text
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?  @db.Text
+  scope             String?  @db.Text
+  id_token          String?  @db.Text
+  session_state     String?  @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique @db.Text
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String   @db.Text
+  token      String   @unique @db.Text
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
